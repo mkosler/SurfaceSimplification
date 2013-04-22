@@ -1,6 +1,7 @@
 CC=g++
-CFLAGS=-c -Wall
-LDFLAGS=-lGL -lGLFW
+INCDIR=include/
+CFLAGS=-c -Wall -I$(INCDIR)
+LDFLAGS=-lGL -lGLU -lglfw
 SOURCES=$(wildcard src/*.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=SurfaceSimplification
