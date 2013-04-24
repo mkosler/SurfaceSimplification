@@ -2,7 +2,7 @@
 
 #include <GL/glfw.h>
 
-#include "Model.h"
+#include "Mesh.h"
 
 const unsigned WINDOW_WIDTH  = 640,
                WINDOW_HEIGHT = 480;
@@ -19,9 +19,9 @@ static float ROTATION_MATRIX[16] = {
 
 static float FOCUS[3] = { 0, 0, -1.5, };
 
-static Model MODEL;
+static Mesh MESH;
 
-static unsigned NUMBER_OF_POLYGONS = 0;
+//static unsigned NUMBER_OF_POLYGONS = 0;
 
 void onExit()
 {
@@ -84,6 +84,7 @@ bool initialize()
 
   glEnable(GL_CULL_FACE);
 
+  glfwSetKeyCallback(onKeyClick);
   glfwSetMouseButtonCallback(onMouseClick);
   glfwSetMousePosCallback(onMouseMove);
 
@@ -92,12 +93,13 @@ bool initialize()
 
 int main(int argc, char *argv[])
 {
-  if (argc != 3) {
-    return 4;
-  }
+  //if (argc != 3) {
+    //return 4;
+  //}
 
-  MODEL = Model::load(argv[1]);
-  NUMBER_OF_POLYGONS = atoi(argv[2]);
+  MESH = Mesh::load(argv[1]);
+  //MODEL = Model::load(argv[1]);
+  //NUMBER_OF_POLYGONS = atoi(argv[2]);
 
   if (!glfwInit()) {
     return 1;
@@ -130,7 +132,7 @@ int main(int argc, char *argv[])
     glTranslatef(FOCUS[0], FOCUS[1], FOCUS[2]);
     glMultMatrixf(ROTATION_MATRIX);
 
-    MODEL.draw();
+    MESH.draw();
 
     glfwSwapBuffers();
   }

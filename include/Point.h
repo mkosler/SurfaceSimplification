@@ -130,8 +130,4 @@ class Point
     }
 };
 
-// Define the common types for this project
-typedef Point<3> Vertex;
-typedef Point<4> Face;
-
 #endif

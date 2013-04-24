@@ -1,6 +1,6 @@
 CC=g++
 INCDIR=include/
-CFLAGS=-c -Wall -I$(INCDIR)
+CFLAGS=-c -Wall -I$(INCDIR) -ggdb
 LDFLAGS=-lGL -lGLU -lglfw
 SOURCES=$(wildcard src/*.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)
