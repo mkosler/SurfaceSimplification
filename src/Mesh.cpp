@@ -44,47 +44,6 @@ void Mesh::draw() const
       glVertex3f(pts[2][0], pts[2][1], pts[2][2]);
     glEnd();
   }
-
-  //Face *f = _edges.front()->face;
-
-  //for (size_t i = 0; i < _faceCount; i++) {
-    //// Set the face as traversed
-    //f->traversed = true;
-
-    //Edge *e = f->edge;
-    //Point<3> pts[3];
-
-    //size_t j = 0;
-    //do {
-      //pts[j++] = e->vert->position;
-      //e = e->next;
-    //} while (e != f->edge);
-
-    //Point<3> normal = getNormal(pts[0], pts[1], pts[2]);
-    //glNormal3f(normal[0], normal[1], normal[2]);
-
-    //glColor3f(1.0f, 1.0f, 1.0f);
-    //glBegin(GL_TRIANGLES);
-      //glVertex3f(pts[0][0], pts[0][1], pts[0][2]);
-      //glVertex3f(pts[1][0], pts[1][1], pts[1][2]);
-      //glVertex3f(pts[2][0], pts[2][1], pts[2][2]);
-    //glEnd();
-
-    //f = e->pair->face;
-    //j = 0;
-
-    //while (f->traversed && (j < 3)) {
-      //j++;
-      //e = e->next;
-      //f = e->pair->face;
-    //}
-
-    //// If I have reached searched all three faces and cannot
-    //// find a non-traversed one, then I am done
-    //if (j == 3) {
-      //break;
-    //}
-  //}
 }
 
 Mesh Mesh::load(const char *filename)
@@ -98,9 +57,6 @@ Mesh Mesh::load(const char *filename)
 
   char flag;
   std::string line;
-  //std::vector<Vertex*> vertexes;
-  //std::vector<Face*> faces;
-
   while (std::getline(ifs, line)) {
     std::istringstream iss(line);
 
@@ -133,7 +89,7 @@ Mesh Mesh::load(const char *filename)
 
   ifs.close();
 
-  std::map<std::pair<size_t, size_t>, size_t> edgeMap;
+  std::map<std::pair<size_t, size_t>, Edge*> edgeMap;
   for (size_t i = 0; i < m._faces.size(); i++) {
     // Grab a face
     Face *f = m._faces[i];
@@ -161,13 +117,16 @@ Mesh Mesh::load(const char *filename)
       std::pair<size_t, size_t> p =
         std::make_pair(std::min(f->indexes[j], f->indexes[(j + 1) % 3]),
                        std::max(f->indexes[j], f->indexes[(j + 1) % 3]));
-      std::map<std::pair<size_t, size_t>, size_t>::iterator it =
+      std::map<std::pair<size_t, size_t>, Edge*>::iterator it =
         edgeMap.find(p);
       if (it == edgeMap.end()) {
-        edgeMap[p] = m._edges.size() + 1;
+        //edgeMap[p] = m._edges.size() + 1;
+        edgeMap[p] = e.get();
       } else {
-        e->pair = m._edges[edgeMap[p]];
-        m._edges[edgeMap[p]]->pair = e.get();
+        e->pair = edgeMap[p];
+        edgeMap[p]->pair = e.get();
+        //e->pair = m._edges[edgeMap[p]];
+        //m._edges[edgeMap[p]]->pair = e.get();
       }
 
       m._edges.push_back(e.release());
