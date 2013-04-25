@@ -6,6 +6,20 @@ Mesh::Mesh()
 
 Mesh::~Mesh()
 {
+  while (!_vertexes.empty()) {
+    delete _vertexes.back();
+    _vertexes.pop_back();
+  }
+
+  while (!_faces.empty()) {
+    delete _faces.back();
+    _faces.pop_back();
+  }
+
+  while (!_edges.empty()) {
+    delete _edges.back();
+    _edges.pop_back();
+  }
 }
 
 Point<3> Mesh::getNormal(Point<3> v1, Point<3> v2, Point<3> v3) const
@@ -43,6 +57,32 @@ void Mesh::draw() const
       glVertex3f(pts[1][0], pts[1][1], pts[1][2]);
       glVertex3f(pts[2][0], pts[2][1], pts[2][2]);
     glEnd();
+  }
+}
+
+void Mesh::simplify(const size_t faces)
+{
+  // Build the QEF for each vertex
+  for (size_t i = 0; i < _vertexes.size(); i++) {
+    Vertex *v = _vertexes[i];
+
+    Edge *e = v->edge;
+    do {
+      // Valence
+      v->QEF[0]++;
+
+      // Sum of surrounding vertexes
+      v->QEF[1] += e->vert->position[0];
+      v->QEF[2] += e->vert->position[1];
+      v->QEF[3] += e->vert->position[2];
+
+      // Sum of the vertex multiplied by its transpose
+      v->QEF[4] += (e->vert->position[0] * e->vert->position[0]) +
+                   (e->vert->position[1] * e->vert->position[1]) +
+                   (e->vert->position[2] * e->vert->position[2]);
+
+      e = e->pair->next;
+    } while (e != v->edge);
   }
 }
 

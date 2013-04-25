@@ -31,6 +31,7 @@ class Mesh
     struct Vertex
     {
       Point<3> position;
+      Point<5> QEF;
       Edge *edge;
     };
 
@@ -52,6 +53,7 @@ class Mesh
     ~Mesh();
 
     void draw() const;
+    void simplify(const size_t faces);
 
     static Mesh load(const char *filename);
 };
