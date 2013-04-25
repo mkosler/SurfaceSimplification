@@ -20,31 +20,37 @@ class Mesh
     struct Vertex;
     struct Face;
 
-    struct Edge
+    struct HalfEdge
     {
-      Vertex *vert;
-      Edge *pair;
+      HalfEdge *next, *prev, *flip;
+      Vertex *origin;
       Face *face;
-      Edge *next;
+      Edge *edge;
     };
 
     struct Vertex
     {
       Point<3> position;
       Point<5> QEF;
-      Edge *edge;
+      HalfEdge *edge;
     };
 
     struct Face
     {
       Point<3> indexes;
-      Edge *edge;
+      HalfEdge *edge;
+    };
+
+    struct Edge
+    {
+      HalfEdge *halfEdge;
     };
 
   private:
     std::vector<Vertex*> _vertexes;
     std::vector<Face*> _faces;
     std::vector<Edge*> _edges;
+    std::vector<HalfEdge*> _halfEdges;
 
     Point<3> getNormal(Point<3> v1, Point<3> v2, Point<3> v3) const;
 
@@ -54,6 +60,8 @@ class Mesh
 
     void draw() const;
     void simplify(const size_t faces);
+
+    Face *getFace(size_t i);
 
     static Mesh load(const char *filename);
 };

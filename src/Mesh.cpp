@@ -20,6 +20,11 @@ Mesh::~Mesh()
     delete _edges.back();
     _edges.pop_back();
   }
+
+  while (!_halfEdges.empty()) {
+    delete _halfEdges.back();
+    _halfEdges.pop_back();
+  }
 }
 
 Point<3> Mesh::getNormal(Point<3> v1, Point<3> v2, Point<3> v3) const
@@ -60,36 +65,36 @@ void Mesh::draw() const
   }
 }
 
-void Mesh::simplify(const size_t faces)
-{
-  // Build the QEF for each vertex
-  for (size_t i = 0; i < _vertexes.size(); i++) {
-    Vertex *v = _vertexes[i];
+//void Mesh::simplify(const size_t faces)
+//{
+  //// Build the QEF for each vertex
+  //for (size_t i = 0; i < _vertexes.size(); i++) {
+    //Vertex *v = _vertexes[i];
 
-    Edge *e = v->edge;
-    do {
-      // Valence
-      v->QEF[0]++;
+    //Edge *e = v->edge;
+    //do {
+      //// Valence
+      //v->QEF[0]++;
 
-      // Sum of surrounding vertexes
-      v->QEF[1] += e->vert->position[0];
-      v->QEF[2] += e->vert->position[1];
-      v->QEF[3] += e->vert->position[2];
+      //// Sum of surrounding vertexes
+      //v->QEF[1] += e->vert->position[0];
+      //v->QEF[2] += e->vert->position[1];
+      //v->QEF[3] += e->vert->position[2];
 
-      // Sum of the vertex multiplied by its transpose
-      v->QEF[4] += (e->vert->position[0] * e->vert->position[0]) +
-                   (e->vert->position[1] * e->vert->position[1]) +
-                   (e->vert->position[2] * e->vert->position[2]);
+      //// Sum of the vertex multiplied by its transpose
+      //v->QEF[4] += (e->vert->position[0] * e->vert->position[0]) +
+                   //(e->vert->position[1] * e->vert->position[1]) +
+                   //(e->vert->position[2] * e->vert->position[2]);
 
-      e = e->pair->next;
-    } while (e != v->edge);
-  }
-}
+      //e = e->pair->next;
+    //} while (e != v->edge);
+  //}
+//}
 
 Mesh Mesh::load(const char *filename)
 {
   Mesh m;
-  
+
   std::ifstream ifs(filename);
   if (!ifs) {
     throw std::runtime_error("Unable to open file: " + std::string(filename));
@@ -97,6 +102,7 @@ Mesh Mesh::load(const char *filename)
 
   char flag;
   std::string line;
+
   while (std::getline(ifs, line)) {
     std::istringstream iss(line);
 
@@ -122,7 +128,7 @@ Mesh Mesh::load(const char *filename)
         }
         break;
       default:
-        throw std::runtime_error("Unknown flag for simple .obj: " + flag);
+        throw std::runtime_error("Unknown flag for file: " + flag);
         break;
     }
   }
@@ -131,59 +137,70 @@ Mesh Mesh::load(const char *filename)
 
   std::map<std::pair<size_t, size_t>, Edge*> edgeMap;
   for (size_t i = 0; i < m._faces.size(); i++) {
-    // Grab a face
     Face *f = m._faces[i];
 
-    // Walk around the face vertexes
     for (size_t j = 0; j < 3; j++) {
-      // Create half-edge for each vertex pair
-      // (this ends up being two half-edges for each pair)
-      std::auto_ptr<Edge> e(new Edge());
+      std::auto_ptr<HalfEdge> he(new HalfEdge());
 
-      // Set the vertex to be the next in the walk
-      e->vert = m._vertexes[f->indexes[(j + 1) % 3] - 1];
+      // The current face created this half edge,
+      // so it must be on the same side of the edge
+      he->face = f;
 
-      // Set the vertexes edge pointer back to the current edge
-      // Since we only need one edge to point to, this being
-      // overwritten doesn't really matter
-      e->vert->edge = e.get();
+      // The origin is the jth vertex (not the (j + 1)th
+      he->origin = m._vertexes[f->indexes[j] - 1];
 
-      // Set the face to be the current face
-      e->face = f;
+      // Since this half edge uses this vertex as its origin,
+      // it is "pointing away" (irrelevant anyways)
+      he->origin->edge = he.get();
 
-      // See if there already exists a half-edge for this vertex pair
-      // if so, set the pair value for each
-      // otherwise, add the edge to the map for easy lookup
+      // Grab any of the half edges created;
+      // Doesn't matter which, since I can reach all face half edges
+      // from any single face half edge
+      f->edge = he.get();
+
+      // See if the "full" edge has been created yet
       std::pair<size_t, size_t> p =
         std::make_pair(std::min(f->indexes[j], f->indexes[(j + 1) % 3]),
                        std::max(f->indexes[j], f->indexes[(j + 1) % 3]));
-      std::map<std::pair<size_t, size_t>, Edge*>::iterator it =
-        edgeMap.find(p);
+      std::map<std::pair<size_t, size_t>, Edge*>::iterator it = edgeMap.find(p);
+
+      // If not, create it, set this half edge as its reference,
+      // and vice versa;
+      // otherwise, use the found edge to grab the flip for both adjacent
+      // half edges
       if (it == edgeMap.end()) {
-        //edgeMap[p] = m._edges.size() + 1;
+        std::auto_ptr<Edge> e(new Edge());
+
+        e->halfEdge = he.get();
+        he->edge = e.get();
+
         edgeMap[p] = e.get();
+
+        m._edges.push_back(e.release());
       } else {
-        e->pair = edgeMap[p];
-        edgeMap[p]->pair = e.get();
-        //e->pair = m._edges[edgeMap[p]];
-        //m._edges[edgeMap[p]]->pair = e.get();
+        Edge *e = it->second;
+
+        he->edge = e;
+
+        he->flip = e->halfEdge;
+        he->flip->flip = he.get();
       }
 
-      m._edges.push_back(e.release());
+      // Add this half edge to the vector
+      m._halfEdges.push_back(he.release());
     }
 
-    // Finish up the half-edges by setting their next
-    Edge *e1 = m._edges[m._edges.size() - 3];
-    Edge *e2 = m._edges[m._edges.size() - 2];
-    Edge *e3 = m._edges[m._edges.size() - 1];
+    // Grab the last three half edges to set the next and prev pointers
+    HalfEdge *hes[3] = {
+      m._halfEdges[m._halfEdges.size() - 3],
+      m._halfEdges[m._halfEdges.size() - 2],
+      m._halfEdges[m._halfEdges.size() - 1],
+    };
 
-    e1->next = e2;
-    e2->next = e3;
-    e3->next = e1;
-
-    // Pick an edge at random, you'll reach all of the other edges
-    // no matter what
-    f->edge = e1;
+    for (size_t j = 0; j < 3; j++) {
+      hes[j]->next = hes[(j + 1) % 3];
+      hes[j]->prev = hes[(j - 1) % 3];
+    }
   }
 
   return m;

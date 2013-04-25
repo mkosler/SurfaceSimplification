@@ -19,7 +19,7 @@ static float ROTATION_MATRIX[16] = {
 
 static float FOCUS[3] = { 0, 0, -1.5, };
 
-static Mesh MESH;
+//static Mesh MESH;
 
 //static unsigned NUMBER_OF_POLYGONS = 0;
 
@@ -97,7 +97,8 @@ int main(int argc, char *argv[])
     //return 4;
   //}
 
-  MESH = Mesh::load(argv[1]);
+  Mesh m = Mesh::load(argv[1]);
+  //m.getFace(0);
   //MODEL = Model::load(argv[1]);
   //NUMBER_OF_POLYGONS = atoi(argv[2]);
 
@@ -132,7 +133,7 @@ int main(int argc, char *argv[])
     glTranslatef(FOCUS[0], FOCUS[1], FOCUS[2]);
     glMultMatrixf(ROTATION_MATRIX);
 
-    MESH.draw();
+    m.draw();
 
     glfwSwapBuffers();
   }
