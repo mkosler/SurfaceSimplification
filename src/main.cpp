@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <cstdio>
 
 #include <GL/glfw.h>
 
@@ -18,10 +19,6 @@ static float ROTATION_MATRIX[16] = {
 };
 
 static float FOCUS[3] = { 0, 0, -1.5, };
-
-//static Mesh MESH;
-
-//static unsigned NUMBER_OF_POLYGONS = 0;
 
 void onExit()
 {
@@ -93,14 +90,13 @@ bool initialize()
 
 int main(int argc, char *argv[])
 {
-  //if (argc != 3) {
-    //return 4;
-  //}
+  if (argc != 3) {
+    fprintf(stderr, "./SurfaceSimplification <path to .obj> <number of vertexes>\n");
+    return 4;
+  }
 
   Mesh m = Mesh::load(argv[1]);
-  //m.getFace(0);
-  //MODEL = Model::load(argv[1]);
-  //NUMBER_OF_POLYGONS = atoi(argv[2]);
+  size_t numberOfPolygons = atoi(argv[2]);
 
   if (!glfwInit()) {
     return 1;
@@ -114,7 +110,7 @@ int main(int argc, char *argv[])
     return 2;
   }
 
-  glfwSetWindowTitle("CSCE 645 - Surface Simplification");
+  glfwSetWindowTitle("CSCE 645 - Surface Simplification - Michael Kosler");
 
   if (!initialize()) {
     return 3;

@@ -6,6 +6,7 @@ Mesh::Mesh()
 
 Mesh::~Mesh()
 {
+  // Clean up all the freaking pointers
   while (!_vertexes.empty()) {
     delete _vertexes.back();
     _vertexes.pop_back();
@@ -27,6 +28,7 @@ Mesh::~Mesh()
   }
 }
 
+// For lighting
 Point<3> Mesh::getNormal(Point<3> v1, Point<3> v2, Point<3> v3) const
 {
   Point<3> vec1 = v3 - v2;
@@ -65,36 +67,98 @@ void Mesh::draw() const
   }
 }
 
-//void Mesh::simplify(const size_t faces)
-//{
-  //// Build the QEF for each vertex
-  //for (size_t i = 0; i < _vertexes.size(); i++) {
-    //Vertex *v = _vertexes[i];
+// The bread and butter
+void Mesh::simplify(const size_t faces)
+{
+  // Build the QEF for each vertex
+  for (size_t i = 0; i < _vertexes.size(); i++) {
+    Vertex *v = _vertexes[i];
 
-    //Edge *e = v->edge;
-    //do {
-      //// Valence
-      //v->QEF[0]++;
+    // I guess this is what I get for missing the day we talked about this stuff
+    // I made some "educated" guesses as to what our simplified QEF was refering to
+    HalfEdge *he = v->edge;
+    do {
+      // Valence
+      v->QEF[0]++;
 
-      //// Sum of surrounding vertexes
-      //v->QEF[1] += e->vert->position[0];
-      //v->QEF[2] += e->vert->position[1];
-      //v->QEF[3] += e->vert->position[2];
+      // Sum of surrounding vertexes
+      v->QEF[1] += he->flip->origin->position[0];
+      v->QEF[2] += he->flip->origin->position[1];
+      v->QEF[3] += he->flip->origin->position[2];
 
-      //// Sum of the vertex multiplied by its transpose
-      //v->QEF[4] += (e->vert->position[0] * e->vert->position[0]) +
-                   //(e->vert->position[1] * e->vert->position[1]) +
-                   //(e->vert->position[2] * e->vert->position[2]);
+      // Sum of vertex transpose times vertex
+      v->QEF[4] += (he->flip->origin->position[0] * he->flip->origin->position[0]) +
+                   (he->flip->origin->position[0] * he->flip->origin->position[0]) +
+                   (he->flip->origin->position[0] * he->flip->origin->position[0]);
 
-      //e = e->pair->next;
-    //} while (e != v->edge);
-  //}
-//}
+      he = he->flip->next;
+    } while (he != v->edge);
+  }
+
+  std::vector<Edge*> heap;
+
+  for (size_t i = 0; i < _edges.size(); i++) {
+    Edge *e = _edges[i];
+    Vertex *lv = e->halfEdge->origin, *rv = e->halfEdge->flip->origin;
+
+    // From the assignment page, the combined QEF is simple addition
+    for (size_t j = 0; j < 5; j++) {
+      e->combineQEF[j] = lv->QEF[j] + rv->QEF[j];
+    }
+
+    heap.push_back(e);
+  }
+
+  // In hopes of having logarithmic priority queue operations, I used STL's make_heap to heapify
+  // the vector
+  std::make_heap(heap.begin(), heap.end(), HeapCompare());
+
+  // Here is where I realized it was 5:30 AM on Thursday, April 25, 2013 and I had no real idea
+  // if much of the above was even correct. It's also when I decided to start commenting the
+  // heck out of my code.
+
+  // This is where the while loop should start for reducing my current polygon count to the desired count
+
+  // Pop the smallest error edge (skipping lazy deletes)
+  std::pop_heap(heap.begin(), heap.end(), HeapCompare());
+  Edge *e = heap.back(); heap.pop_back();
+
+  // Here is the attempt at remembering what you said about lazy deletion; that is to say, I remember talking about
+  // it, but my mind must have been elsewhere. So, I simply added a flag to each edge stating whether or not
+  // I should ignore it (if it happened to be the minimum QEF)
+  while (e->removable) {
+    //std::vector<Edge*>::iterator it = std::find(_edges.begin(), _edges.end(), e);
+
+    std::pop_heap(heap.begin(), heap.end(), HeapCompare());
+    e = heap.back(); heap.pop_back();
+  }
+
+  // Here's the start of creating the next vertex
+  std::auto_ptr<Vertex> nv(new Vertex());
+  nv->QEF = e->combineQEF;
+
+  HalfEdge *lhe = e->halfEdge, *rhe = e->halfEdge->flip;
+
+  // Flag all of the edges surrounding each removed edge vertex as also removable
+  // (for the lazy removal)
+  do {
+    lhe->edge->removable = true;
+    lhe = lhe->flip->next;
+  } while (lhe != e->halfEdge);
+
+  do {
+    rhe->edge->removable = true;
+    rhe = rhe->flip->next;
+  } while (rhe != e->halfEdge->flip);
+}
 
 Mesh Mesh::load(const char *filename)
 {
   Mesh m;
 
+  // The reading from the file is the same as before, but with 3 vertexes per face instead of 4
+  // (That's why those teeth were so ugly, by the way. I was referencing a mysterious 4th
+  // vertex, that just ended up being 0 for all faces
   std::ifstream ifs(filename);
   if (!ifs) {
     throw std::runtime_error("Unable to open file: " + std::string(filename));
@@ -135,10 +199,13 @@ Mesh Mesh::load(const char *filename)
 
   ifs.close();
 
+  // Now for some extra fun with half edges
   std::map<std::pair<size_t, size_t>, Edge*> edgeMap;
   for (size_t i = 0; i < m._faces.size(); i++) {
+    // Grab a face
     Face *f = m._faces[i];
 
+    // Walk around the vertexes, creating half edges for each full edge
     for (size_t j = 0; j < 3; j++) {
       std::auto_ptr<HalfEdge> he(new HalfEdge());
 

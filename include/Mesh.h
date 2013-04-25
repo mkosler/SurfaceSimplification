@@ -1,6 +1,7 @@
 #ifndef _MESH_H_
 #define _MESH_H_
 
+#include <algorithm>
 #include <fstream>
 #include <map>
 #include <memory>
@@ -16,34 +17,53 @@
 class Mesh
 {
   public:
+    struct HalfEdge;
     struct Edge;
     struct Vertex;
     struct Face;
 
+    // All half edge structs are based on slide code
     struct HalfEdge
     {
       HalfEdge *next, *prev, *flip;
-      Vertex *origin;
+      Vertex *origin; // The vertex at the base of the ray cast in the direction of the half edge
       Face *face;
-      Edge *edge;
+      Edge *edge; // The non-oriented edge
     };
 
     struct Vertex
     {
-      Point<3> position;
-      Point<5> QEF;
-      HalfEdge *edge;
+      Point<3> position; // 3D coordinates
+      Point<5> QEF; // Quadratic Error Function
+
+      HalfEdge *edge; // Any random half edge touching the vertex; since I can reach them all, it doesn't matter which one
     };
 
     struct Face
     {
-      Point<3> indexes;
-      HalfEdge *edge;
+      Point<3> indexes; // Store the index information for easy original edge creation
+
+      HalfEdge *edge; // Again, any random half edge will do
     };
 
     struct Edge
     {
-      HalfEdge *halfEdge;
+      Point<5> combineQEF;
+      bool removable; // A stupidly simple lazy removal flag for the priority queue operations
+
+      HalfEdge *halfEdge; // Either side is fine
+    };
+
+    // Used for the STL heap operations;
+    // I am having a bit of trouble understanding what from the QEF
+    // I should be comparing. I made an "educated" guess that it is
+    // the last element in the QEF, but I doubt that is correct.
+    struct HeapCompare
+    {
+      bool operator()(Edge *e1, Edge *e2) const
+      {
+        return e1->combineQEF[4] < e2->combineQEF[4];
+      }
     };
 
   private:
@@ -60,8 +80,6 @@ class Mesh
 
     void draw() const;
     void simplify(const size_t faces);
-
-    Face *getFace(size_t i);
 
     static Mesh load(const char *filename);
 };
